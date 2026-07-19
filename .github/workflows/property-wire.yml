@@ -1,0 +1,45 @@
+# Save this file as: .github/workflows/property-wire.yml
+#
+# Runs fetch_news.py on a schedule, using Gemini (with Google Search
+# grounding) instead of Claude — so it has its own separate rate-limit
+# pool. Commits the updated feed.json back to the repo, which makes it
+# available at a public raw.githubusercontent.com URL for the artifact
+# to read.
+
+name: Property Wire — Gemini fetch
+
+on:
+  schedule:
+    # Runs once a day at 13:00 UTC. Edit the cron expression to change
+    # timing — https://crontab.guru is helpful for building these.
+    - cron: "0 13 * * *"
+  workflow_dispatch: {}   # adds a manual "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write   # needed so the workflow can commit feed.json back
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Run fetcher
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python fetch_news.py
+
+      - name: Commit updated feed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update Property Wire feed"
+          file_pattern: "docs/feed.json"
